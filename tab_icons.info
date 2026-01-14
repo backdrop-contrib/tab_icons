@@ -7,6 +7,6 @@ backdrop = 1.x
 core = 1.x
 dependencies[] = system
 dependencies[] = menu_icon
-admin = admin/structure/tab-icons
+configure = admin/structure/tab-icons
 maintainers[alanmels] = Alan Mels
 maintainers_wanted = TRUE
