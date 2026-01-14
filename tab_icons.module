@@ -1,0 +1,485 @@
+<?php
+
+/**
+ * @file
+ * Tab Icons module: assign Backdrop core icons to tabs (local tasks).
+ */
+
+/**
+ * Implements hook_library_info().
+ */
+function tab_icons_library_info() {
+  $path = backdrop_get_path('module', 'tab_icons');
+
+  $libraries['tab_icons.assets'] = array(
+    'title' => 'Tab icons assets',
+    'version' => '1.0',
+    'css' => array(
+      $path . '/css/tab_icons.css' => array(),
+    ),
+  );
+
+  return $libraries;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function tab_icons_permission() {
+  return array(
+    'administer tab icons' => array(
+      'title' => t('Administer tab icons'),
+      'description' => t('Manage icon assignments for tabs (local tasks).'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_menu().
+ */
+function tab_icons_menu() {
+  $items = array();
+
+  $items['admin/structure/tab-icons'] = array(
+    'title' => 'Tab icons',
+    'description' => 'Assign icons to tabs (local tasks).',
+    'page callback' => 'backdrop_get_form',
+    'page arguments' => array('tab_icons_admin_form'),
+    'access arguments' => array('administer tab icons'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  return $items;
+}
+
+/**
+ * Build the admin UI for assigning icons to tabs.
+ */
+function tab_icons_admin_form($form, &$form_state) {
+  $form['#tree'] = TRUE;
+
+  $assignments = tab_icons_get_assignments();
+  $hide_text_mobile = tab_icons_get_hide_text_mobile();
+  $tasks = tab_icons_discover_tasks();
+  $endpoint = base_path() . 'admin/structure/menu/menu-icon-browser';
+  $grouped = tab_icons_group_tasks($tasks);
+
+  $form['intro'] = array(
+    '#markup' => '<p>' . t('Choose an icon for any tab (local task) using the Backdrop icon browser. Leave an icon blank to show the plain text tab.') . '</p>',
+  );
+
+  $form['hide_text_mobile'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Hide tab text on small screens'),
+    '#description' => t('On small screens, show only the icon for tabs that have one.'),
+    '#default_value' => $hide_text_mobile,
+  );
+
+  $first_group = TRUE;
+  foreach ($grouped as $root_path => $group_tasks) {
+    $group_label = tab_icons_root_label($root_path, $group_tasks);
+    $group_key = tab_icons_row_key('group-' . $root_path);
+
+    $form[$group_key] = array(
+      '#type' => 'fieldset',
+      '#title' => check_plain($group_label),
+      '#collapsible' => TRUE,
+      '#collapsed' => !$first_group,
+    );
+
+    $form[$group_key]['assignments'] = array(
+      '#type' => 'container',
+      '#attributes' => array('class' => array('tab-icons-rows')),
+    );
+
+    foreach ($group_tasks as $task) {
+      $path = $task['path'];
+      $key = tab_icons_row_key($path);
+      $input_id = backdrop_html_id('tab-icon-' . $key);
+      $default_icon = isset($assignments[$path]) ? $assignments[$path] : '';
+
+      $form[$group_key]['assignments'][$key] = array(
+        '#type' => 'container',
+        '#attributes' => array('class' => array('tab-icons-row')),
+      );
+
+      // Line 1: title, path, type.
+      $form[$group_key]['assignments'][$key]['line_meta'] = array(
+        '#type' => 'container',
+        '#attributes' => array('class' => array('tab-icons-line', 'tab-icons-line-meta')),
+      );
+      $form[$group_key]['assignments'][$key]['line_meta']['title'] = array(
+        '#type' => 'markup',
+        '#markup' => check_plain($task['title']),
+        '#prefix' => '<div class="tab-icons-col tab-title">',
+        '#suffix' => '</div>',
+      );
+      $form[$group_key]['assignments'][$key]['line_meta']['path_display'] = array(
+        '#type' => 'markup',
+        '#markup' => check_plain($path),
+        '#prefix' => '<div class="tab-icons-col tab-path">',
+        '#suffix' => '</div>',
+      );
+      $form[$group_key]['assignments'][$key]['line_meta']['type'] = array(
+        '#type' => 'markup',
+        '#markup' => check_plain(tab_icons_type_label($task['type'])),
+        '#prefix' => '<div class="tab-icons-col tab-type">',
+        '#suffix' => '</div>',
+      );
+
+      // Line 2: icon input spans full width.
+      $form[$group_key]['assignments'][$key]['line_icon'] = array(
+        '#type' => 'container',
+        '#attributes' => array('class' => array('tab-icons-line', 'tab-icons-line-icon')),
+      );
+      $form[$group_key]['assignments'][$key]['line_icon']['icon'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Icon for @path', array('@path' => $path)),
+        '#title_display' => 'invisible',
+        '#default_value' => $default_icon,
+        '#maxlength' => 128,
+        '#size' => 20,
+        '#attributes' => array(
+          'id' => $input_id,
+          'placeholder' => t('e.g. house'),
+        ),
+        '#field_suffix' => '<button type="button" class="button button-secondary menu-icon-picker-launch" data-target="' . check_plain($input_id) . '" data-endpoint="' . check_plain($endpoint) . '">' . t('Browse icons') . '</button>',
+        '#prefix' => '<div class="tab-icons-col tab-icon-input">',
+        '#suffix' => '</div>',
+      );
+
+      $form[$group_key]['assignments'][$key]['path'] = array(
+        '#type' => 'value',
+        '#value' => $path,
+      );
+    }
+
+    $first_group = FALSE;
+  }
+
+  $form['controls'] = array(
+    '#type' => 'actions',
+  );
+  $form['controls']['submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Save icons'),
+  );
+  $form['controls']['clear'] = array(
+    '#type' => 'submit',
+    '#value' => t('Clear all icons'),
+    '#submit' => array('tab_icons_admin_form_clear'),
+    '#limit_validation_errors' => array(),
+  );
+
+  $form['#attached']['library'][] = array('tab_icons', 'tab_icons.assets');
+  $form['#attached']['library'][] = array('menu_icon', 'menu_icon.assets');
+  $form['#attached']['library'][] = array('menu_icon', 'menu_icon.picker');
+  $form['#attached']['js'][] = array(
+    'type' => 'setting',
+    'data' => array(
+      'menuIconPicker' => array(
+        'endpoint' => $endpoint,
+        'limit' => 40,
+      ),
+    ),
+  );
+
+  return $form;
+}
+
+/**
+ * Submit handler for saving tab icon assignments.
+ */
+function tab_icons_admin_form_submit($form, &$form_state) {
+  $assignments = array();
+  $hide_text_mobile = !empty($form_state['values']['hide_text_mobile']);
+
+  $rows = tab_icons_collect_assignment_rows($form_state['values']);
+  foreach ($rows as $row) {
+    if (empty($row['path'])) {
+      continue;
+    }
+    $icon = isset($row['icon']) ? trim($row['icon']) : '';
+    if ($icon === '') {
+      continue;
+    }
+
+    $error_key = 'assignments][' . tab_icons_row_key($row['path']) . '][icon';
+    if (!preg_match('/^[A-Za-z0-9_-]+$/', $icon)) {
+      form_set_error($error_key, t('Icons may only contain letters, numbers, underscores, and hyphens.'));
+      continue;
+    }
+    if (!icon_get_path($icon)) {
+      form_set_error($error_key, t('The icon "@icon" was not found.', array('@icon' => $icon)));
+      continue;
+    }
+
+    $assignments[$row['path']] = $icon;
+  }
+
+  if (form_get_errors()) {
+    return;
+  }
+
+  config('tab_icons.settings')
+    ->set('assignments', $assignments)
+    ->set('hide_text_mobile', $hide_text_mobile)
+    ->save();
+
+  backdrop_set_message(t('Tab icons saved.'));
+}
+
+/**
+ * Submit handler for clearing all saved icons.
+ */
+function tab_icons_admin_form_clear($form, &$form_state) {
+  config('tab_icons.settings')
+    ->set('assignments', array())
+    ->set('hide_text_mobile', FALSE)
+    ->save();
+
+  backdrop_set_message(t('All tab icons were cleared.'));
+}
+
+/**
+ * Implements hook_menu_local_tasks_alter().
+ */
+function tab_icons_menu_local_tasks_alter(&$data, $router_item, $root_path) {
+  $assignments = tab_icons_get_assignments();
+  $hide_text_mobile = tab_icons_get_hide_text_mobile();
+  if (empty($assignments)) {
+    return;
+  }
+
+  $applied = FALSE;
+
+  if (!empty($data['tabs'])) {
+    foreach ($data['tabs'] as &$level) {
+      if (empty($level['output'])) {
+        continue;
+      }
+      foreach ($level['output'] as &$tab) {
+        if (!empty($tab['#link']) && tab_icons_apply_icon_to_link($tab['#link'], $assignments, $hide_text_mobile)) {
+          $applied = TRUE;
+        }
+      }
+    }
+  }
+
+  if (!empty($data['actions']['output'])) {
+    foreach ($data['actions']['output'] as &$action) {
+      if (!empty($action['#link']) && tab_icons_apply_icon_to_link($action['#link'], $assignments, $hide_text_mobile)) {
+        $applied = TRUE;
+      }
+    }
+  }
+
+  if ($applied) {
+    backdrop_add_library('tab_icons', 'tab_icons.assets');
+  }
+}
+
+/**
+ * Apply an icon to a menu local task link if configured.
+ */
+function tab_icons_apply_icon_to_link(array &$link, array $assignments, $hide_text_mobile = FALSE) {
+  $key = tab_icons_link_key($link);
+  if ($key === '' || !isset($assignments[$key])) {
+    return FALSE;
+  }
+
+  $icon_name = trim($assignments[$key]);
+  if ($icon_name === '') {
+    return FALSE;
+  }
+  $icon_path = icon_get_path($icon_name);
+  if (!$icon_path) {
+    return FALSE;
+  }
+
+  if (is_string($link['title']) && strpos($link['title'], 'tab-icon-wrapper') !== FALSE) {
+    return FALSE;
+  }
+
+  $label = isset($link['title']) ? $link['title'] : '';
+  if (empty($link['localized_options']['html'])) {
+    $label = check_plain($label);
+  }
+
+  $icon_markup = icon($icon_name);
+
+  $link['localized_options']['html'] = TRUE;
+  $link['localized_options']['attributes']['class'][] = 'has-tab-icon';
+  $link['localized_options']['attributes']['class'][] = 'tab-icon-' . backdrop_clean_css_identifier($icon_name);
+  $link['localized_options']['attributes']['data-tab-icon-path'] = $icon_path;
+  if ($hide_text_mobile) {
+    $link['localized_options']['attributes']['class'][] = 'tab-icon-hide-text-mobile';
+  }
+  if (!empty($link['localized_options']['attributes']['class'])) {
+    $link['localized_options']['attributes']['class'] = array_values(array_unique($link['localized_options']['attributes']['class']));
+  }
+
+  $link['title'] = '<span class="tab-icon-wrapper"><span class="tab-icon-glyph">' . $icon_markup . '</span><span class="tab-icon-label"> ' . $label . '</span></span>';
+
+  return TRUE;
+}
+
+/**
+ * Determine the storage key for a local task link.
+ */
+function tab_icons_link_key(array $link) {
+  if (!empty($link['path'])) {
+    return $link['path'];
+  }
+  if (!empty($link['router_path'])) {
+    return $link['router_path'];
+  }
+  if (!empty($link['href'])) {
+    return $link['href'];
+  }
+  return '';
+}
+
+/**
+ * Get a sanitized key for form row indexes.
+ */
+function tab_icons_row_key($path) {
+  return backdrop_clean_css_identifier($path) . '-' . substr(md5($path), 0, 6);
+}
+
+/**
+ * Human-readable type label for a router item type.
+ */
+function tab_icons_type_label($type) {
+  if ($type & MENU_LINKS_TO_PARENT) {
+    return t('Default tab');
+  }
+  if ($type & MENU_IS_LOCAL_ACTION) {
+    return t('Local action');
+  }
+  return t('Local task');
+}
+
+/**
+ * Group tasks by their tab root for shorter pages.
+ */
+function tab_icons_group_tasks(array $tasks) {
+  $grouped = array();
+  foreach ($tasks as $task) {
+    $root = isset($task['tab_root']) ? $task['tab_root'] : '';
+    $grouped[$root][] = $task;
+  }
+  return $grouped;
+}
+
+/**
+ * Load saved icon assignments.
+ */
+function tab_icons_get_assignments() {
+  $config = config('tab_icons.settings');
+  $assignments = $config->get('assignments');
+  return is_array($assignments) ? $assignments : array();
+}
+
+/**
+ * Get the hide-text-on-mobile flag.
+ */
+function tab_icons_get_hide_text_mobile() {
+  $config = config('tab_icons.settings');
+  return (bool) $config->get('hide_text_mobile');
+}
+
+/**
+ * Discover local tasks (tabs) from the menu router.
+ */
+function tab_icons_discover_tasks() {
+  $tasks = array();
+
+  $query = db_select('menu_router', 'm', array('fetch' => PDO::FETCH_ASSOC));
+  $query->fields('m', array('path', 'title', 'type', 'tab_root', 'tab_parent'));
+  $query->condition('m.context', MENU_CONTEXT_INLINE, '<>');
+  $query->where('(m.type & :mask) <> 0', array(':mask' => MENU_IS_LOCAL_TASK));
+  $query->orderBy('m.tab_root');
+  $query->orderBy('m.tab_parent');
+  $query->orderBy('m.title');
+
+  $results = $query->execute();
+  foreach ($results as $item) {
+    $tasks[] = $item;
+  }
+
+  return $tasks;
+}
+
+/**
+ * Build a human-friendly label for a tab root grouping.
+ */
+function tab_icons_root_label($root_path, array $tasks = array()) {
+  // Prefer a meaningful menu title if the root is an actual router item.
+  $item = menu_get_item($root_path);
+  if (!empty($item['title'])) {
+    return $item['title'] . ' (' . $root_path . ')';
+  }
+
+  // Otherwise, derive a friendly label from common path patterns.
+  $patterns = array(
+    'user/%' => t('User profile (@path)', array('@path' => $root_path)),
+    'node/%' => t('Content (@path)', array('@path' => $root_path)),
+    'admin' => t('Administration (@path)', array('@path' => $root_path)),
+    'taxonomy/term/%' => t('Taxonomy term (@path)', array('@path' => $root_path)),
+    'comment/%' => t('Comment (@path)', array('@path' => $root_path)),
+  );
+
+  foreach ($patterns as $prefix => $label) {
+    if (strpos($root_path, $prefix) === 0) {
+      return $label;
+    }
+  }
+
+  // Fallback: show the router path itself.
+  return $root_path;
+}
+
+/**
+ * Collect assignment rows from nested grouped tables.
+ */
+function tab_icons_collect_assignment_rows($values) {
+  $rows = array();
+  if (!is_array($values)) {
+    return $rows;
+  }
+
+  foreach ($values as $key => $value) {
+    if ($key === 'assignments' && is_array($value)) {
+      foreach ($value as $row) {
+        if (is_array($row)) {
+          $rows[] = tab_icons_normalize_assignment_row($row);
+        }
+      }
+    }
+    elseif (is_array($value)) {
+      $rows = array_merge($rows, tab_icons_collect_assignment_rows($value));
+    }
+  }
+
+  return $rows;
+}
+
+/**
+ * Normalize a row value into a simple path/icon structure.
+ */
+function tab_icons_normalize_assignment_row(array $row) {
+  $normalized = array(
+    'path' => isset($row['path']) ? $row['path'] : '',
+    'icon' => '',
+  );
+
+  if (isset($row['icon'])) {
+    $normalized['icon'] = $row['icon'];
+  }
+  elseif (isset($row['line_icon']['icon'])) {
+    $normalized['icon'] = $row['line_icon']['icon'];
+  }
+
+  return $normalized;
+}

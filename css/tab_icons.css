@@ -1,0 +1,144 @@
+.tab-icon-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    line-height: 1;
+}
+
+.tab-icon-glyph .icon {
+    width: 16px;
+    height: 16px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.tabs .tab-icon-label,
+ul.primary li a .tab-icon-label,
+ul.secondary li a .tab-icon-label {
+    line-height: 1;
+}
+
+.tabs .has-tab-icon,
+ul.primary li a.has-tab-icon,
+ul.secondary li a.has-tab-icon {
+    display: inline-block;
+    line-height: 1;
+}
+
+.tabs .tab-icon-glyph .icon,
+ul.primary li a .tab-icon-glyph .icon,
+ul.secondary li a .tab-icon-glyph .icon {
+    vertical-align: middle;
+    margin-top: -1px;
+}
+
+@media (max-width: 640px) {
+    .tab-icon-hide-text-mobile .tab-icon-label {
+        display: none;
+    }
+
+    .tab-icon-hide-text-mobile.tab-icon-wrapper,
+    .tab-icon-hide-text-mobile .tab-icon-wrapper {
+        gap: 0;
+    }
+
+    ul.primary li a.tab-icon-hide-text-mobile,
+    ul.secondary li a.tab-icon-hide-text-mobile {
+        justify-content: center;
+    }
+}
+
+.tab-icons-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin: 12px 0;
+}
+
+.tab-icons-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+    border: 1px solid #e4e4e4;
+    border-radius: 4px;
+    background: #fafafa;
+}
+
+.tab-icons-row .tab-icons-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 18px;
+    align-items: center;
+}
+
+.tab-icons-col.tab-title {
+    font-weight: 600;
+    min-width: 160px;
+}
+
+.tab-icons-col.tab-path {
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    word-break: break-all;
+    min-width: 200px;
+}
+
+.tab-icons-col.tab-type {
+    color: #555;
+    white-space: nowrap;
+}
+
+.tab-icons-col.tab-icon-input {
+    width: 100%;
+}
+
+.tab-icons-col.tab-icon-input .form-text {
+    width: 100%;
+    min-width: 0;
+    margin-bottom: 6px;
+}
+
+.tab-icons-col.tab-icon-input .field-suffix {
+    display: inline-block;
+}
+
+.tab-icons-col.tab-icon-input .field-suffix .button {
+    white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+    .tab-icons-row .tab-icons-line {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .tab-icons-col.tab-title,
+    .tab-icons-col.tab-path,
+    .tab-icons-col.tab-type {
+        min-width: 0;
+    }
+}
+
+.tab-icons-table th {
+    text-align: left;
+}
+
+.tab-icons-table .tab-title {
+    font-weight: 600;
+    white-space: normal;
+}
+
+.tab-icons-table .tab-path {
+    font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+    white-space: normal;
+    word-break: break-all;
+}
+
+.tab-icons-table .tab-type {
+    white-space: nowrap;
+    color: #555;
+}
+
+.tab-icons-table .tab-icon-input {
+    min-width: 280px;
+}
