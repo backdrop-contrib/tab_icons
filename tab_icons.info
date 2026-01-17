@@ -1,8 +1,8 @@
 name = Tab Icons
-module = tab_icons
 description = Assign Backdrop core icons to tabs (local tasks) with a popup chooser.
 package = Custom
 backdrop = 1.x
+type = module
 dependencies[] = system
 dependencies[] = menu_icons
 configure = admin/structure/tab-icons
