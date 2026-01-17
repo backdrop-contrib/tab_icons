@@ -6,7 +6,7 @@ Tab Icons lets editors assign Backdrop icon names to local task tabs using a pop
 Requirements
 ------------
 
-This module needs the core Menu module to be enabled. It also depends on the Menu Icon module for the shared icon picker.
+This module needs the core Menu module to be enabled. It also depends on the Menu Icons module for the shared icon picker.
 
 Installation
 ------------
