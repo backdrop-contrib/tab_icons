@@ -172,8 +172,9 @@ function tab_icons_admin_form($form, &$form_state) {
   );
 
   $form['#attached']['library'][] = array('tab_icons', 'tab_icons.assets');
-  $form['#attached']['library'][] = array('menu_icon', 'menu_icon.assets');
-  $form['#attached']['library'][] = array('menu_icon', 'menu_icon.picker');
+  // Load menu_icons libraries (module name includes trailing "s").
+  $form['#attached']['library'][] = array('menu_icons', 'menu_icons.assets');
+  $form['#attached']['library'][] = array('menu_icons', 'menu_icons.picker');
   $form['#attached']['js'][] = array(
     'type' => 'setting',
     'data' => array(
